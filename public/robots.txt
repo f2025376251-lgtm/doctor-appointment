@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard.html
+Disallow: /settings.html
+Disallow: /api/dashboard/
+Disallow: /uploads/
