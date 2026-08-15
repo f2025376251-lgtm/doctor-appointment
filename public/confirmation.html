@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Confirm Appointment</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="page-header">
+        <h1>Lahore Dental Clinic</h1>
+      </header>
+
+      <nav class="stepper" aria-label="Booking steps">
+        <div class="step done">
+          <div class="step-dot">✓</div>
+          <div class="step-copy">
+            <strong>Select Date &amp; Time</strong>
+            <span>Completed</span>
+          </div>
+        </div>
+        <div class="step-line done"></div>
+        <div class="step done">
+          <div class="step-dot">✓</div>
+          <div class="step-copy">
+            <strong>Patient Information</strong>
+            <span>Completed</span>
+          </div>
+        </div>
+        <div class="step-line done"></div>
+        <div class="step current">
+          <div class="step-dot">3</div>
+          <div class="step-copy">
+            <strong>Confirmation</strong>
+            <span>In Progress</span>
+          </div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step">
+          <div class="step-dot">4</div>
+          <div class="step-copy">
+            <strong>Thank You</strong>
+            <span>Pending</span>
+          </div>
+        </div>
+      </nav>
+
+      <div id="missingDraft" class="missing-draft" hidden>
+        <p>Please complete the previous steps first.</p>
+        <a class="primary-btn" href="/">Go back</a>
+      </div>
+
+      <div id="confirmLayout" class="confirm-wrap">
+        <h2 class="review-title">Review Your Appointment</h2>
+        <p class="thank-copy">Please check the details below, then confirm to save your booking.</p>
+
+        <div class="details-card review-card">
+          <h3>APPOINTMENT DETAILS</h3>
+          <ul id="confirmList" class="confirm-list"></ul>
+        </div>
+
+        <p id="formError" class="form-error" hidden></p>
+        <div class="confirm-actions">
+          <a class="outline-btn" href="/details.html">← Back</a>
+          <button id="confirmBtn" class="primary-btn" type="button">Confirm Appointment</button>
+        </div>
+      </div>
+    </div>
+    <script src="/js/confirmation.js"></script>
+  </body>
+</html>

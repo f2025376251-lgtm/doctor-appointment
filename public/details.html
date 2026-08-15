@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Patient Information</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="page-header">
+        <h1>Lahore Dental Clinic</h1>
+      </header>
+
+      <nav class="stepper" aria-label="Booking steps">
+        <div class="step done">
+          <div class="step-dot">✓</div>
+          <div class="step-copy">
+            <strong>Select Date &amp; Time</strong>
+            <span>Completed</span>
+          </div>
+        </div>
+        <div class="step-line done"></div>
+        <div class="step current">
+          <div class="step-dot">2</div>
+          <div class="step-copy">
+            <strong>Patient Information</strong>
+            <span>In Progress</span>
+          </div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step">
+          <div class="step-dot">3</div>
+          <div class="step-copy">
+            <strong>Confirmation</strong>
+            <span>Pending</span>
+          </div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step">
+          <div class="step-dot">4</div>
+          <div class="step-copy">
+            <strong>Thank You</strong>
+            <span>Pending</span>
+          </div>
+        </div>
+      </nav>
+
+      <div id="missingDraft" class="missing-draft" hidden>
+        <p>Please select a doctor, date and time first.</p>
+        <a class="primary-btn" href="/">Go back</a>
+      </div>
+
+      <div id="patientLayout" class="patient-layout">
+        <aside class="summary-card">
+          <h2>APPOINTMENT SUMMARY</h2>
+          <img id="summaryPhoto" class="summary-photo" alt="Doctor" />
+          <h3 id="summaryDoctor">Doctor</h3>
+          <p id="summarySpecialty" class="specialty"></p>
+          <p id="summaryDescription" class="doctor-bio"></p>
+          <ul class="summary-list">
+            <li>
+              <span class="icon-wrap" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 10h18M8 3v4M16 3v4" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+              </span>
+              <span>Date: <strong id="summaryDate">—</strong></span>
+            </li>
+            <li>
+              <span class="icon-wrap" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v6l4 2" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+              </span>
+              <span>Time: <strong id="summaryTime">—</strong></span>
+            </li>
+          </ul>
+          <div class="note-box">
+            <strong>Note:</strong> Please arrive 15 minutes early before your appointment time.
+          </div>
+        </aside>
+
+        <section class="patient-form-wrap">
+          <h2>PATIENT INFORMATION</h2>
+          <form id="patientForm">
+            <div class="form-grid">
+              <div class="field">
+                <label for="patientName">Full Name <span class="req">*</span></label>
+                <div class="input-icon">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 20c1.5-4 4-6 7-6s5.5 2 7 6" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+                  <input id="patientName" name="patientName" placeholder="Enter full name" required />
+                </div>
+              </div>
+              <div class="field">
+                <label for="dob">Date of Birth <span class="req">*</span></label>
+                <div class="input-icon">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 10h18M8 3v4M16 3v4" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+                  <input id="dob" name="dob" type="date" required />
+                </div>
+              </div>
+              <div class="field">
+                <label for="email">Email Address <span class="req">*</span></label>
+                <div class="input-icon">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 7l9 7 9-7" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+                  <input id="email" name="email" type="email" placeholder="Enter email address" required />
+                </div>
+              </div>
+              <div class="field">
+                <label for="phone">Phone Number <span class="req">*</span></label>
+                <div class="input-icon">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h4l1 4-2 2a12 12 0 006 6l2-2 4 1v4c0 1-1 2-2 2C11 20 4 13 4 5c0-1 1-2 3-2z" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+                  <input id="phone" name="phone" placeholder="Enter phone number" required />
+                </div>
+              </div>
+              <div class="field">
+                <label>Gender <span class="req">*</span></label>
+                <div class="gender-row">
+                  <label class="choice"><input type="radio" name="gender" value="male" required /> Male</label>
+                  <label class="choice"><input type="radio" name="gender" value="female" /> Female</label>
+                  <label class="choice"><input type="radio" name="gender" value="other" /> Other</label>
+                </div>
+              </div>
+              <div class="field age-field">
+                <label for="age">Age <span class="req">*</span></label>
+                <input id="age" name="age" type="number" min="1" max="120" placeholder="Enter age" required />
+              </div>
+              <div class="field span-2">
+                <label for="address">Address <span class="req">*</span></label>
+                <div class="input-icon">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6 7-11a7 7 0 10-14 0c0 5 7 11 7 11z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="10" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+                  <input id="address" name="address" placeholder="Enter full address" required />
+                </div>
+              </div>
+              <div class="field span-2">
+                <label for="reason">Reason for Visit <span class="req">*</span></label>
+                <div class="input-icon textarea-icon">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v10H8l-3 3V5z" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+                  <textarea id="reason" name="reason" placeholder="Please describe the reason for your visit" required></textarea>
+                </div>
+              </div>
+              <div class="field span-2">
+                <label for="insurance">Insurance (Optional)</label>
+                <div class="input-icon">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 12l2 2 4-4" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+                  <input id="insurance" name="insurance" placeholder="Enter insurance provider or ID number" />
+                </div>
+              </div>
+            </div>
+            <p id="formError" class="form-error" hidden></p>
+            <div class="form-actions">
+              <a class="outline-btn" href="/appointment.html">← Back</a>
+              <button class="primary-btn" type="submit">Continue →</button>
+            </div>
+          </form>
+        </section>
+      </div>
+    </div>
+    <script src="/js/details.js"></script>
+  </body>
+</html>

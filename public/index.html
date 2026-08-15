@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lahore Dental Clinic</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/home.css" />
+  </head>
+  <body class="home">
+    <div class="home-bg" aria-hidden="true">
+      <span class="orb orb-1"></span>
+      <span class="orb orb-2"></span>
+      <span class="orb orb-3"></span>
+    </div>
+    <div class="page home-shell">
+      <header class="home-hero">
+        <div class="home-title-row">
+          <img class="home-logo" src="/images/clinic-logo.png" alt="Lahore Dental Clinic" />
+          <h1>Lahore Dental Clinic</h1>
+        </div>
+        <p class="home-tagline">Gentle care for brighter, healthier smiles.</p>
+      </header>
+
+      <section class="doctor-slider home-slider">
+        <p class="home-kicker">Meet our doctors</p>
+        <div class="doctor-carousel no-arrows">
+          <div id="doctorViewport" class="doctor-viewport">
+            <div id="doctorTrack" class="doctor-track"></div>
+          </div>
+        </div>
+        <div id="doctorDots" class="carousel-dots"></div>
+        <p class="swipe-hint">Swipe to see another doctor</p>
+        <button type="button" id="addAppointmentBtn" class="add-appointment-btn">
+          Add Appointment
+        </button>
+      </section>
+    </div>
+    <script src="/js/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Doctor Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/dashboard.css" />
+  </head>
+  <body class="dashboard-body">
+    <div id="loginView" class="dash-card">
+      <div class="dash-brand">
+        <img class="dash-logo" src="/images/clinic-logo.png" alt="Lahore Dental Clinic" />
+        <p class="dash-brand-name">Lahore Dental Clinic</p>
+      </div>
+      <p class="home-badge">Staff only</p>
+      <h1>Doctor Dashboard</h1>
+      <p class="dash-copy">
+        Sign in to manage doctors, appointments, profiles, and email alerts. Patients cannot reach
+        this page from booking.
+      </p>
+      <form id="loginForm">
+        <div class="field">
+          <label for="password">Dashboard password</label>
+          <input id="password" name="password" type="password" required autocomplete="current-password" />
+        </div>
+        <p id="loginError" class="form-error" hidden></p>
+        <button class="primary-btn btn-neutral" type="submit">Sign in</button>
+      </form>
+    </div>
+
+    <div id="editorView" class="page dash-page" hidden>
+      <header class="dash-brand">
+        <img class="dash-logo" src="/images/clinic-logo.png" alt="Lahore Dental Clinic" />
+        <p class="dash-brand-name">Lahore Dental Clinic</p>
+      </header>
+      <aside class="dash-sidebar">
+        <h1>Dashboard</h1>
+        <nav class="dash-menu" aria-label="Dashboard sections">
+          <button class="dash-nav-btn active" type="button" data-panel="home">Home</button>
+          <button class="dash-nav-btn" type="button" data-panel="appointments">Appointments</button>
+          <button class="dash-nav-btn" type="button" data-panel="doctors">Doctors</button>
+          <button class="dash-nav-btn" type="button" data-panel="account">Account</button>
+          <button class="dash-nav-btn" type="button" data-panel="notifications">Notifications</button>
+        </nav>
+        <div class="dash-sidebar-actions">
+          <a class="outline-btn btn-muted" href="/settings.html">SMTP setup</a>
+          <button id="logoutBtn" class="outline-btn btn-muted" type="button">Log out</button>
+        </div>
+      </aside>
+
+      <div class="dash-main">
+        <section id="panel-home" class="dash-panel">
+          <div class="dash-toolbar">
+            <div>
+              <h2>Overview</h2>
+              <p id="todayLabel" class="hint">Loading appointment statistics…</p>
+            </div>
+            <button id="refreshBtn" class="primary-btn btn-neutral" type="button">Refresh</button>
+          </div>
+          <div class="stat-grid">
+            <article class="stat-card">
+              <span>Total</span>
+              <strong id="countTotal">0</strong>
+            </article>
+            <article class="stat-card">
+              <span>Today</span>
+              <strong id="countToday">0</strong>
+            </article>
+            <article class="stat-card pending">
+              <span>Pending</span>
+              <strong id="countPending">0</strong>
+            </article>
+            <article class="stat-card confirmed">
+              <span>Confirmed</span>
+              <strong id="countConfirmed">0</strong>
+            </article>
+            <article class="stat-card completed">
+              <span>Completed</span>
+              <strong id="countCompleted">0</strong>
+            </article>
+            <article class="stat-card cancelled">
+              <span>Cancelled</span>
+              <strong id="countCancelled">0</strong>
+            </article>
+          </div>
+          <h3 class="dash-sub">Doctors on the booking site</h3>
+          <div id="doctorRoster" class="doctor-roster"></div>
+          <h3 class="dash-sub">Upcoming</h3>
+          <div id="upcomingList" class="upcoming-list"></div>
+        </section>
+
+        <section id="panel-appointments" class="dash-panel" hidden>
+          <div class="dash-toolbar">
+            <div>
+              <h2>Appointments</h2>
+              <p class="hint">Search, filter, or update status. Use Arrived when the patient checks in, then Complete when the visit is done.</p>
+            </div>
+            <div class="dash-filters">
+              <input id="apptSearch" class="filter-select" type="search" placeholder="Search name, phone, or appointment ID" />
+              <select id="doctorFilter" class="filter-select">
+                <option value="all">All doctors</option>
+              </select>
+              <select id="statusFilter" class="filter-select">
+                <option value="all">All statuses</option>
+                <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+              <select id="dateFilter" class="filter-select">
+                <option value="all">All dates</option>
+                <option value="day">Today</option>
+                <option value="week">This week</option>
+                <option value="month">This month</option>
+              </select>
+            </div>
+          </div>
+          <p id="apptError" class="form-error" hidden></p>
+          <div class="table-wrap">
+            <table class="appt-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Time</th>
+                  <th>Patient</th>
+                  <th>Doctor</th>
+                  <th>Contact</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="apptBody"></tbody>
+            </table>
+          </div>
+          <div id="apptPager" class="dash-pager"></div>
+        </section>
+
+        <section id="panel-doctors" class="dash-panel" hidden>
+          <div class="dash-toolbar">
+            <div>
+              <h2>Doctors</h2>
+              <p class="hint">Add a doctor, then publish name, photo, specialization, and description.</p>
+            </div>
+            <button id="addDoctorBtn" class="primary-btn btn-neutral" type="button">Add doctor</button>
+          </div>
+          <div class="dash-layout">
+            <aside class="dash-nav">
+              <p>Select a doctor</p>
+              <div id="doctorTabs" class="dash-tabs"></div>
+            </aside>
+            <div class="dash-editor">
+              <form id="profileForm">
+                <div class="dash-photo">
+                  <img id="previewPhoto" alt="Doctor photo" />
+                  <label class="primary-btn photo-btn btn-neutral" for="photoInput">Change photo</label>
+                  <input id="photoInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden />
+                </div>
+                <div class="field">
+                  <label for="name">Full name</label>
+                  <input id="name" name="name" required maxlength="80" />
+                </div>
+                <div class="field">
+                  <label for="specialty">Specialization</label>
+                  <input
+                    id="specialty"
+                    name="specialty"
+                    list="specialtyList"
+                    required
+                    maxlength="60"
+                    placeholder="Dentistry, Orthodontics..."
+                  />
+                  <datalist id="specialtyList">
+                    <option value="Dentistry"></option>
+                    <option value="Orthodontics"></option>
+                    <option value="Endodontics"></option>
+                    <option value="Periodontics"></option>
+                    <option value="Oral Surgery"></option>
+                    <option value="Cardiology"></option>
+                    <option value="Dermatology"></option>
+                    <option value="General Medicine"></option>
+                    <option value="Pediatrics"></option>
+                  </datalist>
+                </div>
+                <div class="field">
+                  <label for="email">Notification email</label>
+                  <input id="email" name="email" type="email" maxlength="120" placeholder="doctor@clinic.com" />
+                </div>
+                <div class="field">
+                  <label for="description">Description</label>
+                  <textarea id="description" name="description" rows="5" required maxlength="600"></textarea>
+                </div>
+                <p id="saveError" class="form-error" hidden></p>
+                <p id="saveOk" class="photo-status ok" hidden></p>
+                <div class="dash-actions">
+                  <button id="saveDoctorBtn" class="primary-btn btn-save" type="submit">Save &amp; Publish</button>
+                  <button id="deleteDoctorBtn" class="outline-btn danger-btn btn-delete" type="button">Remove doctor</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <section id="panel-account" class="dash-panel" hidden>
+          <h2>Account settings</h2>
+          <p class="hint">Change the dashboard email or password. Current password is required.</p>
+          <form id="accountForm" class="notify-form">
+            <div class="field">
+              <label for="accountEmail">Email address</label>
+              <input id="accountEmail" type="email" maxlength="120" autocomplete="email" />
+            </div>
+            <div class="field">
+              <label for="currentPassword">Current password</label>
+              <input id="currentPassword" type="password" required autocomplete="current-password" />
+            </div>
+            <div class="field">
+              <label for="newPassword">New password</label>
+              <input id="newPassword" type="password" autocomplete="new-password" placeholder="Leave blank to keep current" />
+            </div>
+            <div class="field">
+              <label for="confirmPassword">Confirm new password</label>
+              <input id="confirmPassword" type="password" autocomplete="new-password" placeholder="Leave blank to keep current" />
+            </div>
+            <p id="accountError" class="form-error" hidden></p>
+            <p id="accountOk" class="photo-status ok" hidden></p>
+            <button class="primary-btn btn-save" type="submit">Save account settings</button>
+          </form>
+        </section>
+
+        <section id="panel-notifications" class="dash-panel" hidden>
+          <h2>Email notifications</h2>
+          <p id="emailStatus" class="hint">Loading alert preferences…</p>
+          <form id="notifyForm" class="notify-form">
+            <label class="toggle-row">
+              <input id="doctorNewBooking" type="checkbox" />
+              <span>
+                <strong>New booking — doctor</strong>
+                Email the doctor when a patient books an appointment.
+              </span>
+            </label>
+            <label class="toggle-row">
+              <input id="doctorStatusChange" type="checkbox" />
+              <span>
+                <strong>Status change — doctor</strong>
+                Email the doctor when an appointment is confirmed, cancelled, or completed.
+              </span>
+            </label>
+            <label class="toggle-row">
+              <input id="patientNewBooking" type="checkbox" />
+              <span>
+                <strong>New booking — patient</strong>
+                Email the patient after they book.
+              </span>
+            </label>
+            <label class="toggle-row">
+              <input id="patientStatusChange" type="checkbox" />
+              <span>
+                <strong>Status change — patient</strong>
+                Email the patient when you update their appointment status.
+              </span>
+            </label>
+            <p id="notifyError" class="form-error" hidden></p>
+            <p id="notifyOk" class="photo-status ok" hidden></p>
+            <div class="dash-actions">
+              <button class="primary-btn btn-save" type="submit">Save alert settings</button>
+              <a class="outline-btn btn-muted" href="/settings.html">Configure Gmail / SMTP</a>
+            </div>
+          </form>
+        </section>
+      </div>
+    </div>
+
+    <div id="detailModal" class="dash-modal" hidden>
+      <div class="dash-modal-card">
+        <div class="dash-toolbar">
+          <h2>Patient details</h2>
+          <button id="closeDetailBtn" class="outline-btn btn-close" type="button">Close</button>
+        </div>
+        <div id="detailBody"></div>
+      </div>
+    </div>
+
+    <div id="editModal" class="dash-modal" hidden>
+      <div class="dash-modal-card">
+        <div class="dash-toolbar">
+          <h2>Edit appointment</h2>
+          <button id="closeEditBtn" class="outline-btn btn-close" type="button">Close</button>
+        </div>
+        <form id="editForm">
+          <input id="editId" type="hidden" />
+          <div class="field">
+            <label for="editDate">Date</label>
+            <input id="editDate" type="date" required />
+          </div>
+          <div class="field">
+            <label for="editTime">Time</label>
+            <select id="editTime" required></select>
+          </div>
+          <div class="field">
+            <label for="editNotes">Visit notes</label>
+            <textarea id="editNotes" rows="3" maxlength="400" placeholder="Reason or visit notes"></textarea>
+          </div>
+          <div class="field">
+            <label for="editDoctorNotes">Doctor notes (private)</label>
+            <textarea id="editDoctorNotes" rows="4" maxlength="600" placeholder="Visible only in the dashboard"></textarea>
+          </div>
+          <p id="editError" class="form-error" hidden></p>
+          <div class="dash-actions">
+            <button class="primary-btn btn-save" type="submit">Save changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="deleteModal" class="dash-modal" hidden>
+      <div class="dash-modal-card dash-modal-small">
+        <h2>Delete appointment?</h2>
+        <p id="deleteCopy" class="hint">This cannot be undone.</p>
+        <div class="dash-actions">
+          <button id="cancelDeleteBtn" class="outline-btn btn-close" type="button">Keep it</button>
+          <button id="confirmDeleteBtn" class="primary-btn danger-fill btn-delete" type="button">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="/js/dashboard.js"></script>
+  </body>
+</html>

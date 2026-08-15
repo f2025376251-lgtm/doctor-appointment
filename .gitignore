@@ -1,0 +1,9 @@
+data/secrets.json
+data/outbox.json
+.env
+node_modules/
+data/store.json
+public/uploads/*
+!public/uploads/.gitkeep
+.tools/
+*.log

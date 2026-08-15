@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Add Appointment</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="page-header">
+        <h1>Lahore Dental Clinic</h1>
+      </header>
+
+      <nav class="stepper" aria-label="Booking steps">
+        <div class="step current">
+          <div class="step-dot">1</div>
+          <div class="step-copy">
+            <strong>Select Date &amp; Time</strong>
+            <span>In Progress</span>
+          </div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step">
+          <div class="step-dot">2</div>
+          <div class="step-copy">
+            <strong>Patient Information</strong>
+            <span>Pending</span>
+          </div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step">
+          <div class="step-dot">3</div>
+          <div class="step-copy">
+            <strong>Confirmation</strong>
+            <span>Pending</span>
+          </div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step">
+          <div class="step-dot">4</div>
+          <div class="step-copy">
+            <strong>Thank You</strong>
+            <span>Pending</span>
+          </div>
+        </div>
+      </nav>
+
+      <div id="missingDraft" class="missing-draft" hidden>
+        <p>Please choose a doctor first.</p>
+        <a class="primary-btn" href="/">Go back</a>
+      </div>
+
+      <div id="bookingLayout">
+        <div class="selected-doctor">
+          <img id="selectedPhoto" alt="Doctor" />
+          <div>
+            <h2 id="selectedName">Doctor</h2>
+            <p id="selectedSpecialty" class="specialty"></p>
+            <p id="selectedDescription" class="doctor-bio"></p>
+          </div>
+        </div>
+
+        <main class="columns">
+          <section class="col col-date">
+            <h2>SELECT DATE</h2>
+            <div class="calendar">
+              <div class="cal-nav">
+                <button type="button" id="prevMonth" class="nav-btn" aria-label="Previous month">‹</button>
+                <div id="monthLabel" class="month-label">August 2026</div>
+                <button type="button" id="nextMonth" class="nav-btn" aria-label="Next month">›</button>
+              </div>
+              <div class="weekdays">
+                <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span>
+                <span>Thu</span><span>Fri</span><span>Sat</span>
+              </div>
+              <div id="calGrid" class="cal-grid"></div>
+              <div class="legend">
+                <span class="legend-swatch"></span>
+                <span>Selected Date</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="col col-slots">
+            <h2>AVAILABLE TIME SLOTS</h2>
+            <p id="slotHint" class="slot-hint" hidden></p>
+            <form id="slotForm" class="slot-list"></form>
+          </section>
+        </main>
+
+        <footer class="page-footer">
+          <p id="formError" class="form-error" hidden></p>
+          <a class="outline-btn" href="/">← Back</a>
+          <button type="button" id="nextBtn" class="next-btn" hidden>
+            Next <span class="arrow">→</span>
+          </button>
+        </footer>
+      </div>
+    </div>
+    <script src="/js/appointment.js"></script>
+  </body>
+</html>

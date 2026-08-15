@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Notification Settings</title>
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="page-header">
+        <h1>Lahore Dental Clinic</h1>
+      </header>
+      <div class="form-card-wide">
+        <h2>EMAIL SETTINGS</h2>
+        <p class="settings-intro">
+          After a booking is confirmed, the patient receives a confirmation email and the selected
+          doctor receives an HTML table of the appointment details. Add a Gmail App Password once.
+        </p>
+        <div id="statusBox" class="note-box"></div>
+        <form id="settingsForm">
+          <div class="field">
+            <label for="DOCTOR_EMAIL">Doctor email (receives confirmation)</label>
+            <input id="DOCTOR_EMAIL" name="DOCTOR_EMAIL" type="email" autocomplete="off" />
+          </div>
+          <h3 class="settings-sub">Gmail (for sending email)</h3>
+          <p class="hint">
+            Use the doctor Gmail, turn on 2-Step Verification, then create an App Password at
+            Google Account → Security → App passwords. Paste the 16-character password here.
+          </p>
+          <div class="form-grid">
+            <div class="field">
+              <label for="GMAIL_USER">Gmail address</label>
+              <input id="GMAIL_USER" name="GMAIL_USER" type="email" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="GMAIL_APP_PASSWORD">Gmail App Password</label>
+              <input id="GMAIL_APP_PASSWORD" name="GMAIL_APP_PASSWORD" type="password" placeholder="xxxx xxxx xxxx xxxx" />
+            </div>
+          </div>
+          <h3 class="settings-sub">Supabase (optional)</h3>
+          <p class="hint">Appointments are always saved locally. If you add Supabase, they are also stored in your appointments table.</p>
+          <div class="form-grid">
+            <div class="field">
+              <label for="SUPABASE_URL">Supabase URL</label>
+              <input id="SUPABASE_URL" name="SUPABASE_URL" placeholder="https://xxxx.supabase.co" />
+            </div>
+            <div class="field">
+              <label for="SUPABASE_SERVICE_ROLE_KEY">Supabase service role key</label>
+              <input id="SUPABASE_SERVICE_ROLE_KEY" name="SUPABASE_SERVICE_ROLE_KEY" type="password" />
+            </div>
+          </div>
+          <p id="formError" class="form-error" hidden></p>
+          <p id="formOk" class="photo-status ok" hidden></p>
+          <div class="form-actions">
+            <a class="outline-btn" href="/dashboard.html">← Dashboard</a>
+            <button class="primary-btn" type="submit">Save settings</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <script src="/js/settings.js"></script>
+  </body>
+</html>

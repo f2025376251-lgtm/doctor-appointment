@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thank You</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="page-header">
+        <h1>Lahore Dental Clinic</h1>
+      </header>
+
+      <nav class="stepper" aria-label="Booking steps">
+        <div class="step done">
+          <div class="step-dot">✓</div>
+          <div class="step-copy">
+            <strong>Select Date &amp; Time</strong>
+            <span>Completed</span>
+          </div>
+        </div>
+        <div class="step-line done"></div>
+        <div class="step done">
+          <div class="step-dot">✓</div>
+          <div class="step-copy">
+            <strong>Patient Information</strong>
+            <span>Completed</span>
+          </div>
+        </div>
+        <div class="step-line done"></div>
+        <div class="step done">
+          <div class="step-dot">✓</div>
+          <div class="step-copy">
+            <strong>Confirmation</strong>
+            <span>Completed</span>
+          </div>
+        </div>
+        <div class="step-line done"></div>
+        <div class="step done current">
+          <div class="step-dot">✓</div>
+          <div class="step-copy">
+            <strong>Thank You</strong>
+            <span>Completed</span>
+          </div>
+        </div>
+      </nav>
+
+      <div class="confirm-wrap thanks-animate">
+        <div class="success-mark" aria-hidden="true">
+          <span class="success-ring"></span>
+          <span class="confetti c1"></span>
+          <span class="confetti c2"></span>
+          <span class="confetti c3"></span>
+          <span class="confetti c4"></span>
+          <span class="confetti c5"></span>
+          <span class="confetti c6"></span>
+          <span class="confetti c7"></span>
+          <span class="confetti c8"></span>
+          <span class="confetti c9"></span>
+          <span class="confetti c10"></span>
+          <div class="success-circle">✓</div>
+        </div>
+        <h2 class="thank-you">Thank You!</h2>
+        <p class="thank-copy">
+          Your appointment has been booked successfully. We look forward to seeing you.
+        </p>
+
+        <div class="details-card">
+          <h3>APPOINTMENT DETAILS</h3>
+          <ul id="confirmList" class="confirm-list">
+            <li>Loading...</li>
+          </ul>
+        </div>
+
+        <div id="notifyBanner" class="notify-banner">Sending confirmation emails...</div>
+        <p id="confirmError" class="form-error" hidden></p>
+
+        <div class="confirm-actions">
+          <button id="calendarBtn" class="outline-btn" type="button">Add to Calendar</button>
+          <a class="primary-btn" href="/">Back to Home</a>
+        </div>
+      </div>
+    </div>
+    <script src="/js/thanks.js"></script>
+  </body>
+</html>
