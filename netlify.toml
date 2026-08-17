@@ -3,6 +3,9 @@
   publish = "public"
   functions = "netlify/functions"
 
+[build.processing.html]
+  pretty_urls = true
+
 [functions]
   node_bundler = "nft"
   included_files = [
@@ -16,12 +19,72 @@
 
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/api"
+  to = "/.netlify/functions/api/:splat"
   status = 200
   force = true
 
 [[redirects]]
   from = "/uploads/*"
-  to = "/.netlify/functions/api"
+  to = "/.netlify/functions/api/:splat"
   status = 200
   force = true
+
+[[redirects]]
+  from = "/dashboard"
+  to = "/dashboard.html"
+  status = 200
+
+[[redirects]]
+  from = "/dashboard/"
+  to = "/dashboard.html"
+  status = 200
+
+[[redirects]]
+  from = "/appointment"
+  to = "/appointment.html"
+  status = 200
+
+[[redirects]]
+  from = "/appointment/"
+  to = "/appointment.html"
+  status = 200
+
+[[redirects]]
+  from = "/details"
+  to = "/details.html"
+  status = 200
+
+[[redirects]]
+  from = "/details/"
+  to = "/details.html"
+  status = 200
+
+[[redirects]]
+  from = "/confirmation"
+  to = "/confirmation.html"
+  status = 200
+
+[[redirects]]
+  from = "/confirmation/"
+  to = "/confirmation.html"
+  status = 200
+
+[[redirects]]
+  from = "/thanks"
+  to = "/thanks.html"
+  status = 200
+
+[[redirects]]
+  from = "/thanks/"
+  to = "/thanks.html"
+  status = 200
+
+[[redirects]]
+  from = "/settings"
+  to = "/settings.html"
+  status = 200
+
+[[redirects]]
+  from = "/settings/"
+  to = "/settings.html"
+  status = 200

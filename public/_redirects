@@ -1,0 +1,14 @@
+/api/*  /.netlify/functions/api/:splat  200!
+/uploads/*  /.netlify/functions/api/:splat  200!
+/dashboard    /dashboard.html    200
+/dashboard/   /dashboard.html    200
+/appointment  /appointment.html  200
+/appointment/ /appointment.html  200
+/details      /details.html      200
+/details/     /details.html      200
+/confirmation /confirmation.html 200
+/confirmation/ /confirmation.html 200
+/thanks       /thanks.html       200
+/thanks/      /thanks.html       200
+/settings     /settings.html     200
+/settings/    /settings.html     200
