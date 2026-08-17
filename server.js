@@ -230,7 +230,11 @@ async function readStore() {
   const parsed = await getJson("store");
   if (!parsed) {
     const fresh = emptyStore();
-    await writeStore(fresh);
+    try {
+      await writeStore(fresh);
+    } catch {
+      return structuredClone(fresh);
+    }
     return structuredClone(fresh);
   }
   try {

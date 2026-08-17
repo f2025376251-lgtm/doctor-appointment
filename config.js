@@ -22,6 +22,7 @@ function loadEnvFile() {
 
 function readSecretsFile() {
   try {
+    if (onNetlify()) return {};
     return JSON.parse(fs.readFileSync(SECRETS_FILE, "utf8"));
   } catch {
     return {};

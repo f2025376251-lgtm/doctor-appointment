@@ -5,7 +5,14 @@
 
 [functions]
   node_bundler = "nft"
-  included_files = ["server.js", "config.js", "notify.js", "supabase.js", "persist.js"]
+  included_files = [
+    "server.js",
+    "config.js",
+    "notify.js",
+    "supabase.js",
+    "persist.js",
+    "node_modules/@netlify/blobs/**"
+  ]
 
 [[redirects]]
   from = "/api/*"
