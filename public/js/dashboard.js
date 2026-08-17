@@ -522,6 +522,7 @@ async function checkSession() {
   const { data } = await api("/api/dashboard/session");
   if (data.ok) {
     await loadDoctors();
+    await loadAppointments();
   } else {
     showLogin();
   }
@@ -686,6 +687,7 @@ document.getElementById("loginForm").addEventListener("submit", async (event) =>
     return;
   }
   await loadDoctors();
+  await loadAppointments();
 });
 
 document.getElementById("logoutBtn").addEventListener("click", async () => {

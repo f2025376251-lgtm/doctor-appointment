@@ -129,7 +129,7 @@ async function load() {
     parts.push("The clinic has been notified.");
   }
   if (!parts.length) {
-    banner.textContent = "Your appointment is saved. A confirmation email will be sent when clinic email is set up.";
+    banner.textContent = "Your appointment is saved. The clinic can see it in the dashboard.";
   } else {
     banner.textContent = parts.join(" ");
   }

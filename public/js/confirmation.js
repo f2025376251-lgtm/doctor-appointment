@@ -39,7 +39,7 @@ function row(label, value) {
   return `<li><span>${label}</span><strong>${value || "—"}</strong></li>`;
 }
 
-if (!draft || !draft.doctorId || !draft.patientName || !draft.email) {
+if (!draft || !draft.doctorId || !draft.patientName) {
   layout.hidden = true;
   missing.hidden = false;
 } else {
@@ -51,7 +51,7 @@ if (!draft || !draft.doctorId || !draft.patientName || !draft.email) {
     row("Date of Birth", formatDate(draft.dob)),
     row("Age", draft.age),
     row("Gender", capitalize(draft.gender)),
-    row("Email", draft.email),
+    row("Email", draft.email || "Not provided"),
     row("Phone", draft.phone),
     row("Address", draft.address),
     row("Reason", draft.reason),

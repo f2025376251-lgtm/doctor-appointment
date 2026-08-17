@@ -1,4 +1,5 @@
 const serverless = require("serverless-http");
+const { connectBlobs } = require("../../persist");
 const { app } = require("../../server");
 
 const handle = serverless(app, {
@@ -17,6 +18,7 @@ function normalizePath(raw) {
 }
 
 exports.handler = async (event, context) => {
+  connectBlobs(event);
   if (context && typeof context.callbackWaitsForEmptyEventLoop === "boolean") {
     context.callbackWaitsForEmptyEventLoop = false;
   }

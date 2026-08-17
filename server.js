@@ -346,6 +346,11 @@ const upload = multer({
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use("/api", (_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  next();
+});
 app.use(async (_req, _res, next) => {
   try {
     await hydrateSecrets();
@@ -583,8 +588,8 @@ app.post("/api/appointments", async (req, res) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dob) || new Date(dob) >= new Date()) {
     return res.status(400).json({ error: "Enter a valid date of birth" });
   }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
-    return res.status(400).json({ error: "Enter a valid email address" });
+  if (emailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+    return res.status(400).json({ error: "Enter a valid email address or leave it blank" });
   }
   const phoneDigits = digitsOnly(phoneVal);
   if (phoneDigits.length < 10 || phoneDigits.length > 15) {
@@ -650,20 +655,6 @@ app.post("/api/appointments", async (req, res) => {
   await writeStore(store);
 
   res.status(201).json({ ok: true, appointment: publicAppointment(appointment) });
-
-  if (onNetlify()) return;
-
-  try {
-    appointment.supabase = await saveAppointment(appointment);
-  } catch (err) {
-    appointment.supabase = { ok: false, error: err.message };
-  }
-  try {
-    appointment.notify = await sendNotifications(appointment, store.notify);
-    await writeStore(store);
-  } catch (err) {
-    appointment.notify = { ok: false, error: err.message };
-  }
   } catch (err) {
     if (!res.headersSent) {
       res.status(500).json({ error: err.message || "Could not book appointment" });
@@ -814,23 +805,6 @@ app.patch("/api/appointments/:id/status", requireDashboard, async (req, res) => 
   }
   await writeStore(store);
   res.json({ ok: true, appointment: { ...found, status: nextStatus } });
-
-  if (onNetlify()) return;
-
-  try {
-    found.notify = await sendStatusNotifications(found, store.notify);
-    await writeStore(store);
-  } catch (err) {
-    found.notify = { ok: false, error: err.message };
-    await writeStore(store);
-  }
-  try {
-    found.supabase = await saveAppointment(found);
-    await writeStore(store);
-  } catch (err) {
-    found.supabase = { ok: false, error: err.message };
-    await writeStore(store);
-  }
 });
 
 app.get("/api/dashboard/notify-prefs", requireDashboard, async (_req, res) => {

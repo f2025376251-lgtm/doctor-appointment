@@ -17,10 +17,23 @@ const FILES = {
 };
 
 let getStoreFn = null;
+let connectLambdaFn = null;
 try {
-  getStoreFn = require("@netlify/blobs").getStore;
+  const blobsMod = require("@netlify/blobs");
+  getStoreFn = blobsMod.getStore;
+  connectLambdaFn = blobsMod.connectLambda;
 } catch {
   getStoreFn = null;
+  connectLambdaFn = null;
+}
+
+function connectBlobs(event) {
+  if (!connectLambdaFn || !event) return;
+  try {
+    connectLambdaFn(event);
+  } catch {
+    // keep going; getStore will fall back if Blobs is unavailable
+  }
 }
 
 function onNetlify() {
@@ -84,7 +97,7 @@ async function getJson(key) {
   if (onNetlify()) {
     try {
       const value = await blobs().get(key, { type: "json" });
-      if (value) {
+      if (value != null && value !== "") {
         memoryStore[key] = value;
         return value;
       }
@@ -209,6 +222,7 @@ async function deleteUpload(filename) {
 
 module.exports = {
   onNetlify,
+  connectBlobs,
   getJson,
   setJson,
   saveUpload,
