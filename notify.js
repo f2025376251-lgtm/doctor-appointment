@@ -1,5 +1,3 @@
-const fs = require("fs");
-const path = require("path");
 const nodemailer = require("nodemailer");
 const { getConfig, DOCTOR_EMAIL } = require("./config");
 
@@ -210,18 +208,22 @@ function doctorText(appt) {
   ].join("\n");
 }
 
-function appendOutbox(entry) {
-  const file = path.join(__dirname, "data", "outbox.json");
+async function appendOutbox(entry) {
+  const { getJson, setJson } = require("./persist");
   let list = [];
   try {
-    list = JSON.parse(fs.readFileSync(file, "utf8"));
-    if (!Array.isArray(list)) list = [];
+    const current = await getJson("outbox");
+    list = Array.isArray(current) ? current : [];
   } catch {
     list = [];
   }
   list.push({ ...entry, at: new Date().toISOString() });
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(list, null, 2));
+  if (list.length > 200) list = list.slice(-200);
+  try {
+    await setJson("outbox", list);
+  } catch {
+    // keep booking working if the outbox cannot persist
+  }
 }
 
 async function sendWithResend({ apiKey, from, to, subject, html, text }) {
@@ -375,7 +377,11 @@ async function sendNotifications(appt, prefs) {
   const p = defaultPrefs(prefs);
 
   try {
-    result.email = await withTimeout(sendEmails(appt, p, "new"), 25000, "Email");
+    result.email = await withTimeout(
+      sendEmails(appt, p, "new"),
+      process.env.NETLIFY ? 8000 : 25000,
+      "Email"
+    );
   } catch (err) {
     result.email = {
       ok: false,
@@ -386,7 +392,7 @@ async function sendNotifications(appt, prefs) {
 
   result.sms = { ok: true, skipped: true };
 
-  appendOutbox({
+  await appendOutbox({
     confirmationId: appt.confirmationId,
     doctorEmail: appt.doctorEmail || getConfig().doctorEmail || DOCTOR_EMAIL,
     patientPhone: appt.phone,
@@ -402,7 +408,11 @@ async function sendStatusNotifications(appt, prefs) {
     email: { ok: false },
   };
   try {
-    result.email = await withTimeout(sendEmails(appt, prefs, "status"), 25000, "Email");
+    result.email = await withTimeout(
+      sendEmails(appt, prefs, "status"),
+      process.env.NETLIFY ? 8000 : 25000,
+      "Email"
+    );
   } catch (err) {
     result.email = {
       ok: false,
@@ -410,7 +420,7 @@ async function sendStatusNotifications(appt, prefs) {
       to: appt.doctorEmail || getConfig().doctorEmail || DOCTOR_EMAIL,
     };
   }
-  appendOutbox({
+  await appendOutbox({
     confirmationId: appt.confirmationId,
     kind: "status",
     status: appt.status,

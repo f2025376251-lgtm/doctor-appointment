@@ -1,21 +1,26 @@
 const express = require("express");
 const multer = require("multer");
 const path = require("path");
-const fs = require("fs");
 const crypto = require("crypto");
 
 const ROOT = __dirname;
 
 const { sendNotifications, sendStatusNotifications, DOCTOR_EMAIL } = require("./notify");
-const { getStatus, saveSecrets, getConfig } = require("./config");
+const { getStatus, saveSecrets, getConfig, hydrateSecrets } = require("./config");
 const { saveAppointment, deleteAppointmentRow } = require("./supabase");
+const {
+  onNetlify,
+  getJson,
+  setJson,
+  saveUpload,
+  getUpload,
+  deleteUpload,
+  ensureLocalDirs,
+} = require("./persist");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const PUBLIC = path.join(ROOT, "public");
-const DATA_DIR = path.join(ROOT, "data");
-const STORE_FILE = path.join(DATA_DIR, "store.json");
-const UPLOADS = path.join(PUBLIC, "uploads");
 
 const PLACEHOLDER_PHOTO = "/images/doctor-placeholder.svg";
 
@@ -54,9 +59,7 @@ function defaultDoctors() {
 }
 
 function ensureDirs() {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.mkdirSync(UPLOADS, { recursive: true });
-  fs.mkdirSync(path.join(PUBLIC, "images"), { recursive: true });
+  ensureLocalDirs();
 }
 
 function mergeDoctor(base, extra) {
@@ -214,36 +217,35 @@ function defaultNotifyPrefs() {
   };
 }
 
-function readStore() {
-  ensureDirs();
-  if (!fs.existsSync(STORE_FILE)) {
-    const fresh = {
-      doctors: defaultDoctors(),
-      appointments: [],
-      notify: defaultNotifyPrefs(),
-    };
-    fs.writeFileSync(STORE_FILE, JSON.stringify(fresh, null, 2));
+function emptyStore() {
+  return {
+    doctors: defaultDoctors(),
+    appointments: [],
+    notify: defaultNotifyPrefs(),
+  };
+}
+
+async function readStore() {
+  if (!onNetlify()) ensureDirs();
+  const parsed = await getJson("store");
+  if (!parsed) {
+    const fresh = emptyStore();
+    await writeStore(fresh);
     return structuredClone(fresh);
   }
   try {
-    const parsed = JSON.parse(fs.readFileSync(STORE_FILE, "utf8"));
     return {
       doctors: normalizeDoctors(parsed),
       appointments: Array.isArray(parsed.appointments) ? parsed.appointments : [],
       notify: { ...defaultNotifyPrefs(), ...(parsed.notify || {}) },
     };
   } catch {
-    return {
-      doctors: defaultDoctors(),
-      appointments: [],
-      notify: defaultNotifyPrefs(),
-    };
+    return emptyStore();
   }
 }
 
-function writeStore(store) {
-  ensureDirs();
-  fs.writeFileSync(STORE_FILE, JSON.stringify(store, null, 2));
+async function writeStore(store) {
+  await setJson("store", store);
 }
 
 function publicDoctor(doctor) {
@@ -262,8 +264,6 @@ function findDoctor(store, id) {
   return store.doctors.find((d) => d.id === num) || null;
 }
 
-const dashboardSessions = new Map();
-
 function cookieValue(req, name) {
   const raw = String(req.headers.cookie || "");
   for (const part of raw.split(";")) {
@@ -273,22 +273,41 @@ function cookieValue(req, name) {
   return "";
 }
 
+function sessionSecret() {
+  return process.env.SESSION_SECRET || getConfig().dashboardPassword || "clinic-session";
+}
+
+function cookieOptions(maxAge) {
+  const secure = onNetlify() || process.env.NODE_ENV === "production" ? "; Secure" : "";
+  return `HttpOnly; Path=/; SameSite=Lax; Max-Age=${maxAge}${secure}`;
+}
+
 function createSession() {
-  const token = crypto.randomBytes(24).toString("hex");
-  dashboardSessions.set(token, Date.now() + 24 * 60 * 60 * 1000);
-  return token;
+  const exp = Date.now() + 24 * 60 * 60 * 1000;
+  const payload = Buffer.from(JSON.stringify({ exp })).toString("base64url");
+  const sig = crypto.createHmac("sha256", sessionSecret()).update(payload).digest("base64url");
+  return `${payload}.${sig}`;
 }
 
 function isDashboardAuthed(req) {
   const header = String(req.headers.authorization || "");
   const bearer = header.startsWith("Bearer ") ? header.slice(7) : "";
   const token = bearer || cookieValue(req, "dash_session");
-  const expires = dashboardSessions.get(token);
-  if (!expires || expires < Date.now()) {
-    if (token) dashboardSessions.delete(token);
+  if (!token || !token.includes(".")) return false;
+  const [payload, sig] = token.split(".");
+  if (!payload || !sig) return false;
+  const expected = crypto.createHmac("sha256", sessionSecret()).update(payload).digest("base64url");
+  const sigBuf = Buffer.from(sig);
+  const expectedBuf = Buffer.from(expected);
+  if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
     return false;
   }
-  return true;
+  try {
+    const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    return Number(data.exp) > Date.now();
+  } catch {
+    return false;
+  }
 }
 
 function requireDashboard(req, res, next) {
@@ -298,19 +317,8 @@ function requireDashboard(req, res, next) {
   next();
 }
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    ensureDirs();
-    cb(null, UPLOADS);
-  },
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname || "").toLowerCase() || ".jpg";
-    cb(null, `doctor-${Date.now()}${ext}`);
-  },
-});
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (/^image\/(jpeg|png|webp|gif)$/i.test(file.mimetype)) {
@@ -323,24 +331,43 @@ const upload = multer({
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(PUBLIC));
-
-app.get("/api/doctors", (_req, res) => {
-  res.json(readStore().doctors.map(publicDoctor));
+app.use(async (_req, _res, next) => {
+  try {
+    await hydrateSecrets();
+    next();
+  } catch (err) {
+    next(err);
+  }
 });
 
-app.get("/api/doctors/:id", (req, res) => {
-  const doctor = findDoctor(readStore(), req.params.id);
+app.get("/uploads/:file", async (req, res) => {
+  const file = await getUpload(req.params.file);
+  if (!file) return res.status(404).json({ error: "Image not found" });
+  res.setHeader("Content-Type", file.contentType);
+  res.setHeader("Cache-Control", "public, max-age=31536000");
+  res.send(file.buffer);
+});
+
+if (!onNetlify()) {
+  app.use(express.static(PUBLIC));
+}
+
+app.get("/api/doctors", async (_req, res) => {
+  res.json((await readStore()).doctors.map(publicDoctor));
+});
+
+app.get("/api/doctors/:id", async (req, res) => {
+  const doctor = findDoctor(await readStore(), req.params.id);
   if (!doctor) return res.status(404).json({ error: "Doctor not found" });
   res.json(publicDoctor(doctor));
 });
 
-app.get("/api/doctor", (_req, res) => {
-  res.json(publicDoctor(readStore().doctors[0]));
+app.get("/api/doctor", async (_req, res) => {
+  res.json(publicDoctor((await readStore()).doctors[0]));
 });
 
 function saveDoctorPhoto(req, res, doctorId) {
-  upload.single("photo")(req, res, (err) => {
+  upload.single("photo")(req, res, async (err) => {
     if (err) {
       return res.status(400).json({ error: err.message || "Upload failed" });
     }
@@ -348,18 +375,22 @@ function saveDoctorPhoto(req, res, doctorId) {
       return res.status(400).json({ error: "Please choose a picture" });
     }
 
-    const store = readStore();
+    const store = await readStore();
     const doctor = findDoctor(store, doctorId);
     if (!doctor) {
       return res.status(404).json({ error: "Doctor not found" });
     }
 
+    const ext = path.extname(req.file.originalname || "").toLowerCase() || ".jpg";
+    const filename = `doctor-${Date.now()}${ext}`;
+    await saveUpload(filename, req.file.buffer, req.file.mimetype);
+
     const previous = doctor.photo;
-    doctor.photo = `/uploads/${req.file.filename}`;
-    writeStore(store);
+    doctor.photo = `/uploads/${filename}`;
+    await writeStore(store);
 
     if (previous && previous.startsWith("/uploads/")) {
-      fs.unlink(path.join(PUBLIC, previous), () => {});
+      await deleteUpload(previous.replace("/uploads/", ""));
     }
 
     res.json({ ok: true, photo: doctor.photo, doctor });
@@ -373,17 +404,12 @@ app.post("/api/dashboard/login", (req, res) => {
     return res.status(401).json({ error: "Incorrect dashboard password" });
   }
   const token = createSession();
-  res.setHeader(
-    "Set-Cookie",
-    `dash_session=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=86400`
-  );
+  res.setHeader("Set-Cookie", `dash_session=${token}; ${cookieOptions(86400)}`);
   res.json({ ok: true });
 });
 
 app.post("/api/dashboard/logout", (req, res) => {
-  const token = cookieValue(req, "dash_session");
-  if (token) dashboardSessions.delete(token);
-  res.setHeader("Set-Cookie", "dash_session=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0");
+  res.setHeader("Set-Cookie", `dash_session=; ${cookieOptions(0)}`);
   res.json({ ok: true });
 });
 
@@ -391,15 +417,15 @@ app.get("/api/dashboard/session", (req, res) => {
   res.json({ ok: isDashboardAuthed(req) });
 });
 
-app.get("/api/dashboard/doctors", requireDashboard, (_req, res) => {
-  res.json(readStore().doctors);
+app.get("/api/dashboard/doctors", requireDashboard, async (_req, res) => {
+  res.json((await readStore()).doctors);
 });
 
-app.post("/api/doctors", requireDashboard, (req, res) => {
+app.post("/api/doctors", requireDashboard, async (req, res) => {
   const fields = readDoctorFields(req.body);
   if (fields.error) return res.status(400).json({ error: fields.error });
 
-  const store = readStore();
+  const store = await readStore();
   const doctor = {
     id: nextDoctorId(store.doctors),
     name: fields.name,
@@ -413,12 +439,12 @@ app.post("/api/doctors", requireDashboard, (req, res) => {
     hours: fields.hours,
   };
   store.doctors.push(doctor);
-  writeStore(store);
+  await writeStore(store);
   res.status(201).json({ ok: true, doctor });
 });
 
-app.put("/api/doctors/:id", requireDashboard, (req, res) => {
-  const store = readStore();
+app.put("/api/doctors/:id", requireDashboard, async (req, res) => {
+  const store = await readStore();
   const doctor = findDoctor(store, req.params.id);
   if (!doctor) return res.status(404).json({ error: "Doctor not found" });
 
@@ -429,19 +455,19 @@ app.put("/api/doctors/:id", requireDashboard, (req, res) => {
   doctor.specialty = fields.specialty;
   doctor.description = fields.description;
   if (fields.email) doctor.email = fields.email;
-  writeStore(store);
+  await writeStore(store);
   res.json({ ok: true, doctor });
 });
 
-app.delete("/api/doctors/:id", requireDashboard, (req, res) => {
-  const store = readStore();
+app.delete("/api/doctors/:id", requireDashboard, async (req, res) => {
+  const store = await readStore();
   const doctor = findDoctor(store, req.params.id);
   if (!doctor) return res.status(404).json({ error: "Doctor not found" });
   if (store.doctors.length <= 1) {
     return res.status(400).json({ error: "Keep at least one doctor on the booking site" });
   }
   store.doctors = store.doctors.filter((item) => item.id !== doctor.id);
-  writeStore(store);
+  await writeStore(store);
   res.json({ ok: true });
 });
 
@@ -453,14 +479,14 @@ app.post("/api/doctor/photo", requireDashboard, (req, res) => {
   saveDoctorPhoto(req, res, 1);
 });
 
-app.get("/api/slots", (req, res) => {
+app.get("/api/slots", async (req, res) => {
   const date = String(req.query.date || "").trim();
   const doctorId = Number(req.query.doctorId || 0);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return res.status(400).json({ error: "Valid date is required (YYYY-MM-DD)" });
   }
 
-  const store = readStore();
+  const store = await readStore();
   if (doctorId && !findDoctor(store, doctorId)) {
     return res.status(404).json({ error: "Doctor not found" });
   }
@@ -489,8 +515,8 @@ app.get("/api/slots", (req, res) => {
   });
 });
 
-app.get("/api/appointments", requireDashboard, (_req, res) => {
-  const store = readStore();
+app.get("/api/appointments", requireDashboard, async (_req, res) => {
+  const store = await readStore();
   res.json(
     store.appointments
       .map((a) => ({ ...a, status: normalizeStatus(a.status) }))
@@ -561,7 +587,7 @@ app.post("/api/appointments", async (req, res) => {
     return res.status(400).json({ error: "Please describe the reason for your visit" });
   }
 
-  const store = readStore();
+  const store = await readStore();
   const doctor = findDoctor(store, doctorId);
   if (!doctor) {
     return res.status(400).json({ error: "Please select a doctor" });
@@ -605,7 +631,7 @@ app.post("/api/appointments", async (req, res) => {
   };
 
   store.appointments.push(appointment);
-  writeStore(store);
+  await writeStore(store);
 
   try {
     appointment.supabase = await saveAppointment(appointment);
@@ -614,12 +640,12 @@ app.post("/api/appointments", async (req, res) => {
   }
 
   appointment.notify = await sendNotifications(appointment, store.notify);
-  writeStore(store);
+  await writeStore(store);
   res.status(201).json({ ok: true, appointment: publicAppointment(appointment) });
 });
 
-app.get("/api/dashboard/overview", requireDashboard, (_req, res) => {
-  const store = readStore();
+app.get("/api/dashboard/overview", requireDashboard, async (_req, res) => {
+  const store = await readStore();
   const today = new Date();
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
   const todays = store.appointments.filter((a) => a.date === todayKey);
@@ -654,7 +680,7 @@ app.get("/api/dashboard/overview", requireDashboard, (_req, res) => {
 });
 
 app.put("/api/appointments/:id", requireDashboard, async (req, res) => {
-  const store = readStore();
+  const store = await readStore();
   const found = findAppointment(store, req.params.id);
   if (!found) return res.status(404).json({ error: "Appointment not found" });
 
@@ -685,10 +711,10 @@ app.put("/api/appointments/:id", requireDashboard, async (req, res) => {
   if (body.reason !== undefined) found.reason = String(body.reason || "").trim();
   if (body.doctorNotes !== undefined) found.doctorNotes = String(body.doctorNotes || "").trim();
   found.updatedAt = new Date().toISOString();
-  writeStore(store);
+  await writeStore(store);
   try {
     found.supabase = await saveAppointment(found);
-    writeStore(store);
+    await writeStore(store);
   } catch (err) {
     found.supabase = { ok: false, error: err.message };
   }
@@ -696,11 +722,11 @@ app.put("/api/appointments/:id", requireDashboard, async (req, res) => {
 });
 
 app.delete("/api/appointments/:id", requireDashboard, async (req, res) => {
-  const store = readStore();
+  const store = await readStore();
   const found = findAppointment(store, req.params.id);
   if (!found) return res.status(404).json({ error: "Appointment not found" });
   store.appointments = store.appointments.filter((a) => a.id !== found.id);
-  writeStore(store);
+  await writeStore(store);
   try {
     await deleteAppointmentRow(found.id);
   } catch {
@@ -709,7 +735,7 @@ app.delete("/api/appointments/:id", requireDashboard, async (req, res) => {
   res.json({ ok: true });
 });
 
-app.put("/api/dashboard/account", requireDashboard, (req, res) => {
+app.put("/api/dashboard/account", requireDashboard, async (req, res) => {
   const body = req.body || {};
   const currentPassword = String(body.currentPassword || "");
   const newPassword = String(body.newPassword || "");
@@ -735,7 +761,7 @@ app.put("/api/dashboard/account", requireDashboard, (req, res) => {
   if (!payload.DOCTOR_EMAIL && !payload.DASHBOARD_PASSWORD) {
     return res.json({ ok: true, unchanged: true, status: getStatus() });
   }
-  const status = saveSecrets(payload);
+  const status = await saveSecrets(payload);
   res.json({ ok: true, status });
 });
 
@@ -748,7 +774,7 @@ app.patch("/api/appointments/:id/status", requireDashboard, async (req, res) => 
     });
   }
 
-  const store = readStore();
+  const store = await readStore();
   const found = findAppointment(store, req.params.id);
   if (!found) return res.status(404).json({ error: "Appointment not found" });
   found.status = nextStatus;
@@ -759,41 +785,38 @@ app.patch("/api/appointments/:id/status", requireDashboard, async (req, res) => 
   if (nextStatus === "completed") {
     found.completedAt = found.updatedAt;
   }
-  writeStore(store);
+  await writeStore(store);
 
-  const appointment = { ...found, status: nextStatus };
-  res.json({ ok: true, appointment });
+  try {
+    found.notify = await sendStatusNotifications(found, store.notify);
+    await writeStore(store);
+  } catch (err) {
+    found.notify = { ok: false, error: err.message };
+    await writeStore(store);
+  }
+  try {
+    found.supabase = await saveAppointment(found);
+    await writeStore(store);
+  } catch (err) {
+    found.supabase = { ok: false, error: err.message };
+    await writeStore(store);
+  }
 
-  setImmediate(async () => {
-    try {
-      found.notify = await sendStatusNotifications(found, store.notify);
-      writeStore(store);
-    } catch (err) {
-      found.notify = { ok: false, error: err.message };
-      writeStore(store);
-    }
-    try {
-      found.supabase = await saveAppointment(found);
-      writeStore(store);
-    } catch (err) {
-      found.supabase = { ok: false, error: err.message };
-      writeStore(store);
-    }
-  });
+  res.json({ ok: true, appointment: { ...found, status: nextStatus } });
 });
 
-app.get("/api/dashboard/notify-prefs", requireDashboard, (_req, res) => {
-  const store = readStore();
+app.get("/api/dashboard/notify-prefs", requireDashboard, async (_req, res) => {
+  const store = await readStore();
   res.json({ prefs: store.notify, email: getStatus() });
 });
 
-app.put("/api/dashboard/notify-prefs", requireDashboard, (req, res) => {
-  const store = readStore();
+app.put("/api/dashboard/notify-prefs", requireDashboard, async (req, res) => {
+  const store = await readStore();
   const body = req.body || {};
   for (const key of Object.keys(defaultNotifyPrefs())) {
     if (body[key] !== undefined) store.notify[key] = Boolean(body[key]);
   }
-  writeStore(store);
+  await writeStore(store);
   res.json({ ok: true, prefs: store.notify });
 });
 
@@ -801,17 +824,17 @@ app.get("/api/settings/status", requireDashboard, (_req, res) => {
   res.json(getStatus());
 });
 
-app.post("/api/settings", requireDashboard, (req, res) => {
+app.post("/api/settings", requireDashboard, async (req, res) => {
   try {
-    const status = saveSecrets(req.body || {});
+    const status = await saveSecrets(req.body || {});
     res.json({ ok: true, status });
   } catch (err) {
     res.status(400).json({ error: err.message || "Could not save settings" });
   }
 });
 
-app.get("/api/appointments/:id", (req, res) => {
-  const store = readStore();
+app.get("/api/appointments/:id", async (req, res) => {
+  const store = await readStore();
   const key = decodeURIComponent(req.params.id);
   const found = store.appointments.find(
     (a) => a.id === key || a.confirmationId === key
@@ -825,8 +848,11 @@ app.use((err, _req, res, _next) => {
 });
 
 ensureDirs();
-readStore();
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Doctor Appointment running at http://localhost:${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Doctor Appointment running at http://localhost:${PORT}`);
+  });
+}
+
+module.exports = { app };

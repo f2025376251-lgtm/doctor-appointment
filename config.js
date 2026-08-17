@@ -1,9 +1,12 @@
 const fs = require("fs");
 const path = require("path");
+const { getJson, setJson, onNetlify } = require("./persist");
 
 const ROOT = __dirname;
 const SECRETS_FILE = path.join(ROOT, "data", "secrets.json");
 const DOCTOR_EMAIL = "ahmadhassan266484@gmail.com";
+
+let secretsCache = null;
 
 function loadEnvFile() {
   const envPath = path.join(ROOT, ".env");
@@ -25,9 +28,19 @@ function readSecretsFile() {
   }
 }
 
+async function hydrateSecrets() {
+  loadEnvFile();
+  if (onNetlify()) {
+    secretsCache = (await getJson("secrets")) || {};
+  } else {
+    secretsCache = readSecretsFile();
+  }
+  return secretsCache;
+}
+
 function getConfig() {
   loadEnvFile();
-  const file = readSecretsFile();
+  const file = secretsCache || readSecretsFile();
   const pick = (key, fallback = "") =>
     String(process.env[key] || file[key] || fallback).trim();
 
@@ -56,9 +69,8 @@ function getStatus() {
   };
 }
 
-function saveSecrets(input) {
-  fs.mkdirSync(path.dirname(SECRETS_FILE), { recursive: true });
-  const current = readSecretsFile();
+async function saveSecrets(input) {
+  const current = (await getJson("secrets")) || secretsCache || readSecretsFile();
   const next = { ...current };
   const keys = [
     "GMAIL_USER",
@@ -80,7 +92,8 @@ function saveSecrets(input) {
   }
   if (!next.GMAIL_USER) next.GMAIL_USER = DOCTOR_EMAIL;
   if (!next.DOCTOR_EMAIL) next.DOCTOR_EMAIL = DOCTOR_EMAIL;
-  fs.writeFileSync(SECRETS_FILE, JSON.stringify(next, null, 2));
+  await setJson("secrets", next);
+  secretsCache = next;
   return getStatus();
 }
 
@@ -91,4 +104,5 @@ module.exports = {
   getStatus,
   saveSecrets,
   loadEnvFile,
+  hydrateSecrets,
 };

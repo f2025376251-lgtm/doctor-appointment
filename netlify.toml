@@ -1,0 +1,20 @@
+[build]
+  command = "npm install"
+  publish = "public"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "nft"
+  included_files = ["server.js", "config.js", "notify.js", "supabase.js", "persist.js"]
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/uploads/*"
+  to = "/.netlify/functions/api"
+  status = 200
+  force = true
