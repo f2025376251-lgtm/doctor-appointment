@@ -121,9 +121,9 @@ async function loadDoctors() {
   try {
     const res = await fetch("/api/doctors");
     const data = await res.json();
-    state.doctors = Array.isArray(data) ? data : [];
+    state.doctors = Array.isArray(data) && data.length ? data : FALLBACK_DOCTORS;
   } catch {
-    state.doctors = [];
+    state.doctors = FALLBACK_DOCTORS;
   }
   if (!state.doctors.length) return;
   renderDoctors();

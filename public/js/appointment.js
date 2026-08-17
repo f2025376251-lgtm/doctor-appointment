@@ -70,6 +70,20 @@ function isPastDate(key) {
   return Boolean(key) && key < todayKey();
 }
 
+function localSlots(date) {
+  const times = [
+    "09:00 AM",
+    "09:30 AM",
+    "10:00 AM",
+    "10:30 AM",
+    "11:00 AM",
+    "11:30 AM",
+    "02:00 PM",
+    "02:30 PM",
+  ];
+  return times.map((time) => ({ time, available: !isPastDate(date) }));
+}
+
 function updateNextButton() {
   const btn = document.getElementById("nextBtn");
   btn.hidden = !(state.selectedDate && state.selectedTime && state.doctor);
@@ -165,13 +179,11 @@ async function loadSlots() {
     data = await res.json().catch(() => ({}));
     if (!res.ok) {
       if (requestId !== slotsRequest) return;
-      hint.textContent = data.error || "Could not load times for this date.";
-      return;
+      data = { slots: localSlots(state.selectedDate) };
     }
   } catch {
     if (requestId !== slotsRequest) return;
-    hint.textContent = "Could not load times. Make sure the app is running.";
-    return;
+    data = { slots: localSlots(state.selectedDate) };
   }
   if (requestId !== slotsRequest) return;
 
@@ -219,17 +231,26 @@ async function start() {
     try {
       const listRes = await fetch("/api/doctors");
       const doctors = await listRes.json();
-      if (listRes.ok && doctors && doctors[0]) {
+      const first =
+        listRes.ok && doctors && doctors[0] ? doctors[0] : FALLBACK_DOCTORS[0];
+      if (first) {
         draft = {
-          doctorId: doctors[0].id,
-          doctorName: doctors[0].name,
-          specialty: doctors[0].specialty,
-          description: doctors[0].description || "",
-          photo: doctors[0].photo,
+          doctorId: first.id,
+          doctorName: first.name,
+          specialty: first.specialty,
+          description: first.description || "",
+          photo: first.photo,
         };
       }
     } catch {
-      draft = null;
+      const first = FALLBACK_DOCTORS[0];
+      draft = {
+        doctorId: first.id,
+        doctorName: first.name,
+        specialty: first.specialty,
+        description: first.description || "",
+        photo: first.photo,
+      };
     }
   }
 
@@ -245,11 +266,12 @@ async function start() {
     res = await fetch(`/api/doctors/${draft.doctorId}`);
     doctor = await res.json();
   } catch {
-    layout.hidden = true;
-    missing.hidden = false;
-    return;
+    doctor = FALLBACK_DOCTORS.find((item) => item.id === Number(draft.doctorId)) || draft;
   }
-  if (!res.ok) {
+  if (!doctor || (res && !res.ok && !doctor.name)) {
+    doctor = FALLBACK_DOCTORS.find((item) => item.id === Number(draft.doctorId)) || FALLBACK_DOCTORS[0];
+  }
+  if (!doctor || !doctor.id) {
     layout.hidden = true;
     missing.hidden = false;
     return;

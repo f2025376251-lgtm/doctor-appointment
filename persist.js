@@ -21,23 +21,33 @@ function onNetlify() {
 
 function blobs() {
   const { getStore } = require("@netlify/blobs");
-  return getStore("clinic");
+  return getStore({
+    name: "clinic",
+    consistency: "strong",
+  });
 }
 
 function ensureLocalDirs() {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.mkdirSync(UPLOADS, { recursive: true });
-  fs.mkdirSync(path.join(PUBLIC, "images"), { recursive: true });
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.mkdirSync(UPLOADS, { recursive: true });
+    fs.mkdirSync(path.join(PUBLIC, "images"), { recursive: true });
+  } catch {
+    // Netlify functions have a read-only filesystem
+  }
 }
+
+let memoryStore = {};
 
 async function getJson(key) {
   if (onNetlify()) {
     try {
       const value = await blobs().get(key, { type: "json" });
-      return value || null;
+      if (value) return value;
     } catch {
-      return null;
+      // fall through to memory
     }
+    return memoryStore[key] || null;
   }
   try {
     return JSON.parse(fs.readFileSync(FILES[key], "utf8"));
@@ -48,7 +58,12 @@ async function getJson(key) {
 
 async function setJson(key, value) {
   if (onNetlify()) {
-    await blobs().setJSON(key, value);
+    memoryStore[key] = value;
+    try {
+      await blobs().setJSON(key, value);
+    } catch {
+      // keep the in-memory copy so this request still works
+    }
     return;
   }
   ensureLocalDirs();

@@ -847,7 +847,9 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: err.message || "Server error" });
 });
 
-ensureDirs();
+if (!onNetlify()) {
+  ensureDirs();
+}
 
 if (require.main === module) {
   app.listen(PORT, "0.0.0.0", () => {
