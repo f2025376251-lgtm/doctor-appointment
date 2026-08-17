@@ -70,6 +70,22 @@ function isPastDate(key) {
   return Boolean(key) && key < todayKey();
 }
 
+function slotDate(date, time) {
+  const [clock, mer] = String(time || "").split(" ");
+  const parts = String(clock || "").split(":").map(Number);
+  let hour = parts[0] || 0;
+  const minute = parts[1] || 0;
+  if (mer === "PM" && hour !== 12) hour += 12;
+  if (mer === "AM" && hour === 12) hour = 0;
+  const [year, month, day] = String(date).split("-").map(Number);
+  return new Date(year, month - 1, day, hour, minute, 0);
+}
+
+function isPastSlot(date, time) {
+  if (isPastDate(date)) return true;
+  return Date.now() > slotDate(date, time).getTime();
+}
+
 function localSlots(date) {
   const times = [
     "09:00 AM",
@@ -81,7 +97,15 @@ function localSlots(date) {
     "02:00 PM",
     "02:30 PM",
   ];
-  return times.map((time) => ({ time, available: !isPastDate(date) }));
+  return times.map((time) => ({ time, available: !isPastSlot(date, time) }));
+}
+
+function updateNextButton() {
+  const btn = document.getElementById("nextBtn");
+  const error = document.getElementById("formError");
+  const ready = Boolean(state.doctor && state.selectedDate && state.selectedTime);
+  btn.hidden = !ready;
+  if (ready && error) error.hidden = true;
 }
 
 function doctorPhoto(doctor) {
@@ -110,6 +134,9 @@ function renderSlotList(slots) {
   const hint = document.getElementById("slotHint");
   form.innerHTML = "";
   const open = slots.filter((slot) => slot.available);
+  if (state.selectedTime && !open.some((slot) => slot.time === state.selectedTime)) {
+    state.selectedTime = "";
+  }
   hint.hidden = false;
   hint.textContent = open.length
     ? `Available times for ${formatPretty(state.selectedDate)}`
@@ -133,6 +160,7 @@ function renderSlotList(slots) {
     label.append(input, text);
     form.appendChild(label);
   });
+  updateNextButton();
 }
 
 function updateMonthNav() {
