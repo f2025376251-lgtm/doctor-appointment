@@ -84,9 +84,55 @@ function localSlots(date) {
   return times.map((time) => ({ time, available: !isPastDate(date) }));
 }
 
-function updateNextButton() {
-  const btn = document.getElementById("nextBtn");
-  btn.hidden = !(state.selectedDate && state.selectedTime && state.doctor);
+function doctorPhoto(doctor) {
+  const mapped = publicPhotoUrl(doctor && doctor.photo);
+  if (mapped && mapped !== "/images/doctor-placeholder.svg") return mapped;
+  const match = FALLBACK_DOCTORS.find((item) => item.id === Number(doctor && doctor.id));
+  return (match && match.photo) || "/images/doctor-placeholder.svg";
+}
+
+function showSelectedDoctor(doctor) {
+  state.doctor = doctor;
+  const img = document.getElementById("selectedPhoto");
+  img.src = `${doctorPhoto(doctor)}?v=3`;
+  img.onerror = () => {
+    img.onerror = null;
+    img.src = "/images/doctor-placeholder.svg";
+  };
+  document.getElementById("selectedName").textContent = doctor.name || "Doctor";
+  document.getElementById("selectedSpecialty").textContent = doctor.specialty || "";
+  const bio = document.getElementById("selectedDescription");
+  if (bio) bio.textContent = doctor.description || "";
+}
+
+function renderSlotList(slots) {
+  const form = document.getElementById("slotForm");
+  const hint = document.getElementById("slotHint");
+  form.innerHTML = "";
+  const open = slots.filter((slot) => slot.available);
+  hint.hidden = false;
+  hint.textContent = open.length
+    ? `Available times for ${formatPretty(state.selectedDate)}`
+    : "No remaining times for this date. Please choose another day.";
+
+  slots.forEach((slot) => {
+    const label = document.createElement("label");
+    label.className = "slot" + (slot.available ? "" : " taken");
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.name = "slot";
+    input.value = slot.time;
+    input.disabled = !slot.available;
+    if (slot.available && state.selectedTime === slot.time) input.checked = true;
+    input.addEventListener("change", () => {
+      state.selectedTime = slot.time;
+      updateNextButton();
+    });
+    const text = document.createElement("span");
+    text.textContent = slot.available ? slot.time : `${slot.time} (Unavailable)`;
+    label.append(input, text);
+    form.appendChild(label);
+  });
 }
 
 function updateMonthNav() {
@@ -158,10 +204,8 @@ function selectDate(key, date) {
 }
 
 async function loadSlots() {
-  const form = document.getElementById("slotForm");
   const hint = document.getElementById("slotHint");
   const requestId = ++slotsRequest;
-  form.innerHTML = "";
 
   if (!state.selectedDate || !state.doctor) {
     hint.hidden = false;
@@ -169,55 +213,19 @@ async function loadSlots() {
     return;
   }
 
-  hint.hidden = false;
-  hint.textContent = "Loading times...";
-  let data = {};
+  renderSlotList(localSlots(state.selectedDate));
   try {
     const res = await fetch(
       `/api/slots?date=${encodeURIComponent(state.selectedDate)}&doctorId=${encodeURIComponent(state.doctor.id)}`
     );
-    data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      if (requestId !== slotsRequest) return;
-      data = { slots: localSlots(state.selectedDate) };
+    const data = await res.json().catch(() => ({}));
+    if (requestId !== slotsRequest) return;
+    if (res.ok && Array.isArray(data.slots) && data.slots.length) {
+      renderSlotList(data.slots);
     }
   } catch {
-    if (requestId !== slotsRequest) return;
-    data = { slots: localSlots(state.selectedDate) };
+    // local slots already on screen
   }
-  if (requestId !== slotsRequest) return;
-
-  const slots = Array.isArray(data.slots) ? data.slots : [];
-  if (!slots.length) {
-    hint.hidden = false;
-    hint.textContent = "No time slots are available for this date.";
-    return;
-  }
-
-  const open = slots.filter((slot) => slot.available);
-  hint.hidden = false;
-  hint.textContent = open.length
-    ? `Available times for ${formatPretty(state.selectedDate)}`
-    : "No remaining times for this date. Please choose another day.";
-
-  slots.forEach((slot) => {
-    const label = document.createElement("label");
-    label.className = "slot" + (slot.available ? "" : " taken");
-    const input = document.createElement("input");
-    input.type = "radio";
-    input.name = "slot";
-    input.value = slot.time;
-    input.disabled = !slot.available;
-    if (slot.available && state.selectedTime === slot.time) input.checked = true;
-    input.addEventListener("change", () => {
-      state.selectedTime = slot.time;
-      updateNextButton();
-    });
-    const text = document.createElement("span");
-    text.textContent = slot.available ? slot.time : `${slot.time} (Unavailable)`;
-    label.append(input, text);
-    form.appendChild(label);
-  });
 }
 
 async function start() {
@@ -228,61 +236,26 @@ async function start() {
   state.viewMonth = today.getMonth();
 
   if (!draft || !draft.doctorId) {
-    try {
-      const listRes = await fetch("/api/doctors");
-      const doctors = await listRes.json();
-      const first =
-        listRes.ok && doctors && doctors[0] ? doctors[0] : FALLBACK_DOCTORS[0];
-      if (first) {
-        draft = {
-          doctorId: first.id,
-          doctorName: first.name,
-          specialty: first.specialty,
-          description: first.description || "",
-          photo: first.photo,
-        };
-      }
-    } catch {
-      const first = FALLBACK_DOCTORS[0];
-      draft = {
-        doctorId: first.id,
-        doctorName: first.name,
-        specialty: first.specialty,
-        description: first.description || "",
-        photo: first.photo,
-      };
-    }
+    draft = {
+      doctorId: FALLBACK_DOCTORS[0].id,
+      doctorName: FALLBACK_DOCTORS[0].name,
+      specialty: FALLBACK_DOCTORS[0].specialty,
+      description: FALLBACK_DOCTORS[0].description,
+      photo: FALLBACK_DOCTORS[0].photo,
+    };
   }
 
-  if (!draft || !draft.doctorId) {
-    layout.hidden = true;
-    missing.hidden = false;
-    return;
-  }
-
-  let res;
-  let doctor;
-  try {
-    res = await fetch(`/api/doctors/${draft.doctorId}`);
-    doctor = await res.json();
-  } catch {
-    doctor = FALLBACK_DOCTORS.find((item) => item.id === Number(draft.doctorId)) || draft;
-  }
-  if (!doctor || (res && !res.ok && !doctor.name)) {
-    doctor = FALLBACK_DOCTORS.find((item) => item.id === Number(draft.doctorId)) || FALLBACK_DOCTORS[0];
-  }
-  if (!doctor || !doctor.id) {
-    layout.hidden = true;
-    missing.hidden = false;
-    return;
-  }
-
-  state.doctor = doctor;
-  document.getElementById("selectedPhoto").src = `${doctor.photo}?v=2`;
-  document.getElementById("selectedName").textContent = doctor.name;
-  document.getElementById("selectedSpecialty").textContent = doctor.specialty || "";
-  const bio = document.getElementById("selectedDescription");
-  if (bio) bio.textContent = doctor.description || "";
+  const quick =
+    FALLBACK_DOCTORS.find((item) => item.id === Number(draft.doctorId)) || {
+      id: draft.doctorId,
+      name: draft.doctorName,
+      specialty: draft.specialty,
+      description: draft.description,
+      photo: draft.photo,
+    };
+  showSelectedDoctor(quick);
+  missing.hidden = true;
+  layout.hidden = false;
 
   if (draft.date && !isPastDate(draft.date)) {
     const [y, m] = draft.date.split("-").map(Number);
@@ -301,6 +274,14 @@ async function start() {
   renderCalendar();
   loadSlots();
   updateNextButton();
+
+  try {
+    const res = await fetch(`/api/doctors/${draft.doctorId}`);
+    const doctor = await res.json();
+    if (res.ok && doctor && doctor.name) showSelectedDoctor(doctor);
+  } catch {
+    // fallback photo already showing
+  }
 }
 
 document.getElementById("prevMonth").addEventListener("click", () => {

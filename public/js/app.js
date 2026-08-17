@@ -15,7 +15,7 @@ function makeDoctorCard(doctor) {
   card.className = "doctor-card";
   card.innerHTML = `
     <div class="photo-wrap">
-      <img src="${doctor.photo}?v=2" alt="${doctor.name}" />
+      <img src="${publicPhotoUrl(doctor.photo)}?v=4" alt="${doctor.name}" onerror="this.onerror=null;this.src='/images/doctor-placeholder.svg'" />
     </div>
     <h3>${doctor.name}</h3>
     <p class="specialty">${doctor.specialty}</p>
@@ -118,16 +118,19 @@ function restartAutoLoop() {
 }
 
 async function loadDoctors() {
+  state.doctors = FALLBACK_DOCTORS.slice();
+  renderDoctors();
+  startAutoLoop();
   try {
     const res = await fetch("/api/doctors");
     const data = await res.json();
-    state.doctors = Array.isArray(data) && data.length ? data : FALLBACK_DOCTORS;
+    if (Array.isArray(data) && data.length) {
+      state.doctors = data;
+      renderDoctors();
+    }
   } catch {
-    state.doctors = FALLBACK_DOCTORS;
+    // keep the fallback doctors already on screen
   }
-  if (!state.doctors.length) return;
-  renderDoctors();
-  startAutoLoop();
 }
 
 function bindSwipe() {

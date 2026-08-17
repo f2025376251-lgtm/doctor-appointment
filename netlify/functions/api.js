@@ -17,6 +17,13 @@ function normalizePath(raw) {
 }
 
 exports.handler = async (event, context) => {
+  if (context && typeof context.callbackWaitsForEmptyEventLoop === "boolean") {
+    context.callbackWaitsForEmptyEventLoop = false;
+  }
+  if (event.isBase64Encoded && event.body) {
+    event.body = Buffer.from(event.body, "base64").toString("utf8");
+    event.isBase64Encoded = false;
+  }
   event.path = normalizePath(event.path);
   if (event.rawPath) event.rawPath = normalizePath(event.rawPath);
   return handle(event, context);

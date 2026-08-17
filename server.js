@@ -43,7 +43,7 @@ function defaultDoctors() {
       specialty: "Cardiologist",
       description:
         "Heart specialist with over 10 years of experience in treating cardiovascular diseases. He provides expert consultation, diagnosis and treatment with personalized care for every patient.",
-      photo: "/images/doctor-ahmad.png",
+      photo: "/images/doctor-ahmad.jpg",
       email: DOCTOR_EMAIL,
     },
     {
@@ -52,7 +52,7 @@ function defaultDoctors() {
       specialty: "Dermatologist",
       description:
         "Skin specialist focused on acne, eczema, allergies and cosmetic dermatology. She offers careful diagnosis and treatment plans tailored to each patient.",
-      photo: "/images/doctor-sarah.png",
+      photo: "/images/doctor-sarah.jpg",
       email: DOCTOR_EMAIL,
     },
   ];
@@ -133,7 +133,7 @@ function publicAppointment(appt) {
     doctorId: appt.doctorId,
     doctorName: appt.doctorName,
     specialty: appt.specialty,
-    photo: appt.photo,
+    photo: publicPhoto(appt.photo),
     date: appt.date,
     time: appt.time,
     patientName: appt.patientName,
@@ -248,6 +248,17 @@ async function writeStore(store) {
   await setJson("store", store);
 }
 
+function publicPhoto(photo) {
+  const map = {
+    "/images/doctor-ahmad.png": "/images/doctor-ahmad.jpg",
+    "/images/doctor-ahmad-new.png": "/images/doctor-ahmad.jpg",
+    "/images/doctor-sarah.png": "/images/doctor-sarah.jpg",
+    "/images/doctor-default.png": "/images/doctor-default.jpg",
+  };
+  const value = String(photo || PLACEHOLDER_PHOTO);
+  return map[value] || value || PLACEHOLDER_PHOTO;
+}
+
 function publicDoctor(doctor) {
   if (!doctor) return null;
   return {
@@ -255,7 +266,7 @@ function publicDoctor(doctor) {
     name: doctor.name,
     specialty: doctor.specialty,
     description: doctor.description || "",
-    photo: doctor.photo,
+    photo: publicPhoto(doctor.photo),
   };
 }
 
@@ -538,6 +549,7 @@ function digitsOnly(value) {
 }
 
 app.post("/api/appointments", async (req, res) => {
+  try {
   const body = req.body || {};
   const name = String(body.patientName || "").trim();
   const phoneVal = String(body.phone || "").trim();
@@ -614,7 +626,7 @@ app.post("/api/appointments", async (req, res) => {
     doctorName: doctor.name,
     specialty: doctor.specialty,
     doctorEmail: doctor.email || DOCTOR_EMAIL,
-    photo: doctor.photo,
+    photo: publicPhoto(doctor.photo),
     date: dateVal,
     time: timeVal,
     patientName: name,
@@ -633,15 +645,26 @@ app.post("/api/appointments", async (req, res) => {
   store.appointments.push(appointment);
   await writeStore(store);
 
+  res.status(201).json({ ok: true, appointment: publicAppointment(appointment) });
+
+  if (onNetlify()) return;
+
   try {
     appointment.supabase = await saveAppointment(appointment);
   } catch (err) {
     appointment.supabase = { ok: false, error: err.message };
   }
-
-  appointment.notify = await sendNotifications(appointment, store.notify);
-  await writeStore(store);
-  res.status(201).json({ ok: true, appointment: publicAppointment(appointment) });
+  try {
+    appointment.notify = await sendNotifications(appointment, store.notify);
+    await writeStore(store);
+  } catch (err) {
+    appointment.notify = { ok: false, error: err.message };
+  }
+  } catch (err) {
+    if (!res.headersSent) {
+      res.status(500).json({ error: err.message || "Could not book appointment" });
+    }
+  }
 });
 
 app.get("/api/dashboard/overview", requireDashboard, async (_req, res) => {
@@ -786,6 +809,9 @@ app.patch("/api/appointments/:id/status", requireDashboard, async (req, res) => 
     found.completedAt = found.updatedAt;
   }
   await writeStore(store);
+  res.json({ ok: true, appointment: { ...found, status: nextStatus } });
+
+  if (onNetlify()) return;
 
   try {
     found.notify = await sendStatusNotifications(found, store.notify);
@@ -801,8 +827,6 @@ app.patch("/api/appointments/:id/status", requireDashboard, async (req, res) => 
     found.supabase = { ok: false, error: err.message };
     await writeStore(store);
   }
-
-  res.json({ ok: true, appointment: { ...found, status: nextStatus } });
 });
 
 app.get("/api/dashboard/notify-prefs", requireDashboard, async (_req, res) => {

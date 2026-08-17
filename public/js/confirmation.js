@@ -92,10 +92,14 @@ document.getElementById("confirmBtn").addEventListener("click", async () => {
         insurance: draft.insurance,
       }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       error.hidden = false;
-      error.textContent = data.error || "Could not book appointment";
+      error.textContent =
+        data.error ||
+        (res.status >= 500
+          ? "The server took too long. Please wait a few seconds and tap Confirm again."
+          : "Could not book appointment. Please try again.");
       return;
     }
 

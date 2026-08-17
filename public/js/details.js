@@ -34,28 +34,35 @@ function fillSavedFields() {
 }
 
 function showDoctor(doctor) {
+  const photo = publicPhotoUrl(doctor.photo);
   document.getElementById("summaryDoctor").textContent = doctor.name;
   document.getElementById("summarySpecialty").textContent = doctor.specialty || "";
   document.getElementById("summaryDescription").textContent = doctor.description || "";
-  document.getElementById("summaryPhoto").src = `${doctor.photo}?v=2`;
+  const img = document.getElementById("summaryPhoto");
+  img.src = `${photo}?v=3`;
+  img.onerror = () => {
+    img.onerror = null;
+    img.src = "/images/doctor-placeholder.svg";
+  };
   draft.doctorName = doctor.name;
   draft.specialty = doctor.specialty;
   draft.description = doctor.description;
-  draft.photo = doctor.photo;
+  draft.photo = photo;
 }
 
 async function loadPublishedDoctor() {
+  showDoctor({
+    name: draft.doctorName,
+    specialty: draft.specialty,
+    description: draft.description,
+    photo: draft.photo,
+  });
   try {
     const res = await fetch(`/api/doctors/${draft.doctorId}`);
     const doctor = await res.json();
-    if (res.ok) showDoctor(doctor);
+    if (res.ok && doctor && doctor.name) showDoctor(doctor);
   } catch {
-    showDoctor({
-      name: draft.doctorName,
-      specialty: draft.specialty,
-      description: draft.description,
-      photo: draft.photo,
-    });
+    // draft photo already showing
   }
 }
 
